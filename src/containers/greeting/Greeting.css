@@ -55,6 +55,12 @@
   height: auto;
 }
 
+.greeting-weather-div {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
 /* Media Query */
 @media (max-width: 1380px) {
   .greeting-text {
@@ -85,6 +91,10 @@
   }
   .greeting-main {
     display: block;
+  }
+
+  .greeting-weather-div {
+    margin-top: 1.25rem;
   }
 
   .portfolio-repo-btn-div {

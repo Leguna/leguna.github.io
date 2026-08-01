@@ -5,6 +5,7 @@ import Button from "../../components/button/Button";
 import { greeting } from "../../portfolio";
 import { Fade } from "react-reveal";
 import FeelingProud from "./FeelingProud";
+import WeatherWidget from "../../components/weatherWidget/WeatherWidget";
 
 export default function Greeting(props) {
   const theme = props.theme;
@@ -50,6 +51,9 @@ export default function Greeting(props) {
 							src={require("../../assests/images/feelingProud.svg")}
 						></img> */}
             <FeelingProud theme={theme} />
+            <div className="greeting-weather-div">
+              <WeatherWidget theme={theme} />
+            </div>
           </div>
         </div>
       </div>
