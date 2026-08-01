@@ -687,6 +687,22 @@ const APP_DEFS = [
     defaultSize: { width: 460, height: 480 },
     component: <ContactApp />,
   },
+  {
+    id: "sudoku",
+    title: "Sudoku",
+    icon: "🧩",
+    defaultPos: { x: 260, y: 100 },
+    defaultSize: { width: 480, height: 520 },
+    component: <SudokuApp />,
+  },
+  {
+    id: "snake",
+    title: "Snake",
+    icon: "🐍",
+    defaultPos: { x: 300, y: 120 },
+    defaultSize: { width: 520, height: 560 },
+    component: <SnakeApp />,
+  },
 ];
 
 const DESKTOP_ICONS = [
@@ -694,6 +710,8 @@ const DESKTOP_ICONS = [
   { id: "about", label: "About Me", icon: "👤", action: "app" },
   { id: "projects", label: "Projects", icon: "🖥️", action: "app" },
   { id: "contact", label: "Contact", icon: "📫", action: "app" },
+  { id: "sudoku", label: "Sudoku", icon: "🧩", action: "app" },
+  { id: "snake", label: "Snake", icon: "🐍", action: "app" },
   {
     id: "github",
     label: "GitHub",
