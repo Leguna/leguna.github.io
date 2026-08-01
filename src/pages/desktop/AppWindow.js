@@ -14,6 +14,7 @@ export default function AppWindow({
 }) {
   const [pos, setPos] = useState(defaultPos);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const savedPos = useRef(defaultPos);
   const dragging = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -29,16 +30,24 @@ export default function AppWindow({
     const onUp = () => {
       dragging.current = false;
     };
+    const updateViewport = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    updateViewport();
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    window.addEventListener("resize", updateViewport);
+
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("resize", updateViewport);
     };
   }, []);
 
   const onBarMouseDown = (e) => {
-    if (e.button !== 0 || isMaximized) return;
+    if (e.button !== 0 || isMaximized || isMobile) return;
     dragging.current = true;
     dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
     onFocus();
@@ -55,23 +64,35 @@ export default function AppWindow({
     }
   };
 
-  const style = isMaximized
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1280;
+  const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 900;
+  const responsiveWidth = isMobile
+    ? "100vw"
+    : Math.min(defaultSize.width, Math.max(280, viewportWidth - 16));
+  const responsiveHeight = isMobile
+    ? "calc(100dvh - 48px)"
+    : Math.min(defaultSize.height, Math.max(180, viewportHeight - 64));
+  const style = isMaximized || isMobile
     ? {
         position: "fixed",
         left: 0,
         top: 0,
         width: "100vw",
-        height: "calc(100vh - 48px)",
+        height: "calc(100dvh - 48px)",
         borderRadius: 0,
         zIndex,
+        maxWidth: "100vw",
+        maxHeight: "calc(100dvh - 48px)",
       }
     : {
         position: "fixed",
-        left: pos.x,
-        top: pos.y,
-        width: defaultSize.width,
-        height: defaultSize.height,
+        left: Math.min(pos.x, Math.max(0, viewportWidth - responsiveWidth - 8)),
+        top: Math.min(pos.y, Math.max(0, viewportHeight - responsiveHeight - 56)),
+        width: responsiveWidth,
+        height: responsiveHeight,
         zIndex,
+        maxWidth: `calc(100vw - 16px)`,
+        maxHeight: `calc(100dvh - 64px)`,
       };
 
   return (
