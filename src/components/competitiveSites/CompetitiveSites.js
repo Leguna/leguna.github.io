@@ -31,7 +31,12 @@ class CompetitiveSites extends React.Component {
                       style={logo.style}
                       data-inline="false"
                     >
-                      <img class="manImg" height="50em" src={logo.image}></img>
+                      <img
+                        alt=""
+                        class="manImg"
+                        height="50em"
+                        src={logo.image}
+                      ></img>
                     </span>
                   </a>
                 </li>
