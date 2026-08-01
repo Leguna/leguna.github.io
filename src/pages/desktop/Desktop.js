@@ -307,6 +307,8 @@ const DESKTOP_ICONS = [
   },
 ];
 
+const WINDOW_BASE_Z = 100;
+
 /* ═══════════════════════════════════════════════════════════════
    Desktop Component
    ═══════════════════════════════════════════════════════════════ */
@@ -333,7 +335,7 @@ export default function Desktop() {
   const openApp = useCallback(
     (id) => {
       setWindows((prev) => {
-        const z = nextZ(prev);
+        const z = Math.max(nextZ(prev), WINDOW_BASE_Z);
         if (prev[id]) {
           return { ...prev, [id]: { ...prev[id], minimized: false, z } };
         }
@@ -365,7 +367,7 @@ export default function Desktop() {
   const bringToFront = useCallback(
     (id) => {
       setWindows((prev) => {
-        const z = nextZ(prev);
+        const z = Math.max(nextZ(prev), WINDOW_BASE_Z);
         return { ...prev, [id]: { ...prev[id], z } };
       });
       setActiveId(id);
@@ -380,7 +382,7 @@ export default function Desktop() {
         openApp(id);
       } else if (win.minimized) {
         setWindows((prev) => {
-          const z = nextZ(prev);
+          const z = Math.max(nextZ(prev), WINDOW_BASE_Z);
           return { ...prev, [id]: { ...prev[id], minimized: false, z } };
         });
         setActiveId(id);
