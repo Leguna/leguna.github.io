@@ -23,8 +23,7 @@ const greeting = {
   nickname: "tuf-tuf / leguna",
   subTitle:
     "Developer that passionate at game dev and mobile app dev. Love Building AI Bot, but hate Data Cleaning.",
-  resumeLink:
-    "https://drive.google.com/file/d/1ilwOgmy7_1Cub0qOBgfI6k-NHC9A3XeI/view?usp=sharing",
+  resumeLink: "https://drive.google.com/file/d/1EAoyWagT9bmfIevIuvVlHq8azNR4hHYE/view?usp=sharing",
   portfolio_repository: "https://github.com/Leguna/leguna.github.io/",
 };
 
