@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import "./Desktop.css";
 import AppWindow from "./AppWindow";
 import Taskbar from "./Taskbar";
@@ -250,153 +250,199 @@ function ContactApp() {
 
 function WeatherWidget() {
   const [weather, setWeather] = useState(null);
-  const [locationLabel, setLocationLabel] = useState("Bandung, Indonesia");
+  const [locationLabel, setLocationLabel] = useState("");
   const [status, setStatus] = useState("loading");
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const drag = useRef({ active: false, sx: 0, sy: 0, ox: 0, oy: 0 });
 
   const loadWeather = useCallback(() => {
-   if (!navigator.geolocation) {
-     setStatus("fallback");
-     setWeather({
-       temperature: 27,
-       weatherCode: 1,
-       description: "Clear skies",
-     });
-     return;
-   }
-
-   navigator.geolocation.getCurrentPosition(
-     (position) => {
-       const { latitude, longitude } = position.coords;
-       const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude.toFixed(3)}&longitude=${longitude.toFixed(3)}&current=temperature_2m,weather_code&timezone=auto`;
-       const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude.toFixed(3)}&longitude=${longitude.toFixed(3)}&language=en`;
-
-       Promise.all([
-         fetch(weatherUrl).then((response) => response.json()),
-         fetch(geocodeUrl).then((response) => response.json()),
-       ])
-         .then(([weatherResponse, geocodeResponse]) => {
-           const current = weatherResponse?.current;
-           const place = geocodeResponse?.results?.[0];
-           const nextWeather = {
-             temperature: Math.round(current?.temperature_2m ?? 27),
-             weatherCode: current?.weather_code ?? 1,
-             description: getWeatherDescription(current?.weather_code ?? 1),
-           };
-           const nextLabel = place ? `${place.name}${place.country ? `, ${place.country}` : ""}` : "Your location";
-           setWeather(nextWeather);
-           setLocationLabel(nextLabel);
-           setStatus("ready");
-         })
-         .catch(() => {
-           setWeather({
-             temperature: 27,
-             weatherCode: 1,
-             description: "Clear skies",
-           });
-           setStatus("fallback");
-         });
-     },
-     () => {
-       setWeather({
-         temperature: 27,
-         weatherCode: 1,
-         description: "Clear skies",
-       });
-       setStatus("fallback");
-     }
-   );
+    if (!navigator.geolocation) {
+      setWeather({
+        temperature: 27,
+        weatherCode: 1,
+        description: "Clear skies",
+      });
+      setLocationLabel("Ciputat, Indonesia");
+      setStatus("ready");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude.toFixed(
+          3
+        )}&longitude=${longitude.toFixed(
+          3
+        )}&current=temperature_2m,weather_code&timezone=auto`;
+        const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude.toFixed(
+          3
+        )}&longitude=${longitude.toFixed(3)}&language=en`;
+        Promise.all([
+          fetch(weatherUrl).then((r) => r.json()),
+          fetch(geocodeUrl).then((r) => r.json()),
+        ])
+          .then(([wr, gr]) => {
+            const current = wr?.current;
+            const place = gr?.results?.[0];
+            setWeather({
+              temperature: Math.round(current?.temperature_2m ?? 27),
+              weatherCode: current?.weather_code ?? 1,
+              description: getWeatherDescription(current?.weather_code ?? 1),
+            });
+            setLocationLabel(
+              place
+                ? `${place.name}${place.country ? `, ${place.country}` : ""}`
+                : "Your location"
+            );
+            setStatus("ready");
+          })
+          .catch(() => {
+            setWeather({
+              temperature: 27,
+              weatherCode: 1,
+              description: "Clear skies",
+            });
+            setLocationLabel("Ciputat, Indonesia");
+            setStatus("ready");
+          });
+      },
+      () => {
+        setWeather({
+          temperature: 27,
+          weatherCode: 1,
+          description: "Clear skies",
+        });
+        setLocationLabel("Ciputat, Indonesia");
+        setStatus("ready");
+      }
+    );
   }, []);
 
   useEffect(() => {
-   loadWeather();
+    loadWeather();
   }, [loadWeather]);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!drag.current.active) return;
+      setOffset({
+        x: drag.current.ox + e.clientX - drag.current.sx,
+        y: drag.current.oy + e.clientY - drag.current.sy,
+      });
+    };
+    const onUp = () => {
+      drag.current.active = false;
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const handleMouseDown = (e) => {
+    drag.current = {
+      active: true,
+      sx: e.clientX,
+      sy: e.clientY,
+      ox: offset.x,
+      oy: offset.y,
+    };
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   const icon = getWeatherIcon(weather?.weatherCode ?? 1);
 
   return (
-   <div className="weather-widget">
-     <div className="weather-widget__header">
-       <span className="weather-widget__icon">{icon}</span>
-       <div>
-         <p className="weather-widget__label">Weather</p>
-         <h3>{locationLabel}</h3>
-       </div>
-     </div>
-     <div className="weather-widget__body">
-       {status === "loading" ? (
-         <p>Checking your local forecast…</p>
-       ) : (
-         <>
-           <p className="weather-widget__temp">{weather?.temperature ?? 27}°C</p>
-           <p>{weather?.description ?? "Clear skies"}</p>
-         </>
-       )}
-     </div>
-   </div>
+    <div
+      className="desktop-weather-widget"
+      style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
+      onMouseDown={handleMouseDown}
+      aria-label="Weather widget"
+    >
+      <div className="ww-row">
+        <span className="ww-icon">{icon}</span>
+        <div className="ww-data">
+          <span className="ww-temp">
+            {status === "loading" ? "…" : `${weather?.temperature ?? 27}°`}
+          </span>
+          <span className="ww-desc">
+            {status === "loading"
+              ? "Fetching weather…"
+              : weather?.description ?? "Clear skies"}
+          </span>
+          {locationLabel ? (
+            <span className="ww-loc">{locationLabel}</span>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 
 function getWeatherDescription(code) {
   switch (code) {
-   case 0:
-     return "Clear skies";
-   case 1:
-   case 2:
-     return "Mostly clear";
-   case 3:
-     return "Cloudy";
-   case 45:
-   case 48:
-     return "Foggy";
-   case 61:
-   case 63:
-   case 65:
-     return "Rain";
-   case 71:
-   case 73:
-   case 75:
-     return "Snow";
-   default:
-     return "Pleasant";
+    case 0:
+      return "Clear skies";
+    case 1:
+    case 2:
+      return "Mostly clear";
+    case 3:
+      return "Cloudy";
+    case 45:
+    case 48:
+      return "Foggy";
+    case 61:
+    case 63:
+    case 65:
+      return "Rain";
+    case 71:
+    case 73:
+    case 75:
+      return "Snow";
+    default:
+      return "Pleasant";
   }
 }
 
 function getWeatherIcon(code) {
   switch (code) {
-   case 0:
-     return "☀️";
-   case 1:
-   case 2:
-     return "🌤️";
-   case 3:
-     return "☁️";
-   case 45:
-   case 48:
-     return "🌫️";
-   case 61:
-   case 63:
-   case 65:
-     return "🌧️";
-   case 71:
-   case 73:
-   case 75:
-     return "❄️";
-   default:
-     return "🌦️";
+    case 0:
+      return "☀️";
+    case 1:
+    case 2:
+      return "🌤️";
+    case 3:
+      return "☁️";
+    case 45:
+    case 48:
+      return "🌫️";
+    case 61:
+    case 63:
+    case 65:
+      return "🌧️";
+    case 71:
+    case 73:
+    case 75:
+      return "❄️";
+    default:
+      return "🌦️";
   }
 }
 
 function SudokuApp() {
   const initialBoard = [
-   [5, 3, null, null, 7, null, null, null, null],
-   [6, null, null, 1, 9, 5, null, null, null],
-   [null, 9, 8, null, null, null, null, 6, null],
-   [8, null, null, null, 6, null, null, null, 3],
-   [4, null, null, 8, null, 3, null, null, 1],
-   [7, null, null, null, 2, null, null, null, 6],
-   [null, 6, null, null, null, null, 2, 8, null],
-   [null, null, null, 4, 1, 9, null, null, 5],
-   [null, null, null, null, 8, null, null, 7, 9],
+    [5, 3, null, null, 7, null, null, null, null],
+    [6, null, null, 1, 9, 5, null, null, null],
+    [null, 9, 8, null, null, null, null, 6, null],
+    [8, null, null, null, 6, null, null, null, 3],
+    [4, null, null, 8, null, 3, null, null, 1],
+    [7, null, null, null, 2, null, null, null, 6],
+    [null, 6, null, null, null, null, 2, 8, null],
+    [null, null, null, 4, 1, 9, null, null, 5],
+    [null, null, null, null, 8, null, null, 7, 9],
   ];
 
   const [board, setBoard] = useState(initialBoard);
@@ -404,99 +450,115 @@ function SudokuApp() {
   const [message, setMessage] = useState("Tap a cell and choose a number.");
 
   const handleCellClick = (row, column) => {
-   if (board[row][column] !== null) {
-     setMessage("That space is locked. Pick an empty square.");
-     return;
-   }
+    if (board[row][column] !== null) {
+      setMessage("That space is locked. Pick an empty square.");
+      return;
+    }
 
-   setSelectedCell({ row, column });
-   setMessage(`Editing row ${row + 1}, column ${column + 1}.`);
+    setSelectedCell({ row, column });
+    setMessage(`Editing row ${row + 1}, column ${column + 1}.`);
   };
 
   const handleNumberSelect = (value) => {
-   if (!selectedCell) {
-     setMessage("First select an empty square.");
-     return;
-   }
+    if (!selectedCell) {
+      setMessage("First select an empty square.");
+      return;
+    }
 
-   const nextBoard = board.map((row) => [...row]);
-   nextBoard[selectedCell.row][selectedCell.column] = value;
-   setBoard(nextBoard);
-   setMessage(`Placed ${value} in the selected square.`);
+    const nextBoard = board.map((row) => [...row]);
+    nextBoard[selectedCell.row][selectedCell.column] = value;
+    setBoard(nextBoard);
+    setMessage(`Placed ${value} in the selected square.`);
   };
 
   const resetPuzzle = () => {
-   setBoard(initialBoard.map((row) => [...row]));
-   setSelectedCell(null);
-   setMessage("Puzzle reset. Choose a square to begin.");
+    setBoard(initialBoard.map((row) => [...row]));
+    setSelectedCell(null);
+    setMessage("Puzzle reset. Choose a square to begin.");
   };
 
   return (
-   <div className="sudoku-app">
-     <div className="sudoku-app__header">
-       <div>
-         <h3>Mini Sudoku</h3>
-         <p>Try a quick puzzle with a few taps.</p>
-       </div>
-       <button type="button" onClick={resetPuzzle} className="pill-button">
-         Reset
-       </button>
-     </div>
-     <div className="sudoku-app__board" role="grid" aria-label="Sudoku puzzle">
-       {board.map((row, rowIndex) =>
-         row.map((value, columnIndex) => {
-           const isSelected = selectedCell?.row === rowIndex && selectedCell?.column === columnIndex;
-           const cellClasses = [
-             "sudoku-app__cell",
-             value !== null ? "sudoku-app__cell--fixed" : "",
-             isSelected ? "sudoku-app__cell--selected" : "",
-             rowIndex === 2 || rowIndex === 5 ? "sudoku-app__cell--row-divider" : "",
-             columnIndex === 2 || columnIndex === 5 ? "sudoku-app__cell--col-divider" : "",
-           ]
-             .filter(Boolean)
-             .join(" ");
+    <div className="sudoku-app">
+      <div className="sudoku-app__header">
+        <div>
+          <h3>Mini Sudoku</h3>
+          <p>Try a quick puzzle with a few taps.</p>
+        </div>
+        <button type="button" onClick={resetPuzzle} className="pill-button">
+          Reset
+        </button>
+      </div>
+      <div className="sudoku-app__board" role="grid" aria-label="Sudoku puzzle">
+        {board.map((row, rowIndex) =>
+          row.map((value, columnIndex) => {
+            const isSelected =
+              selectedCell?.row === rowIndex &&
+              selectedCell?.column === columnIndex;
+            const cellClasses = [
+              "sudoku-app__cell",
+              value !== null ? "sudoku-app__cell--fixed" : "",
+              isSelected ? "sudoku-app__cell--selected" : "",
+              rowIndex === 2 || rowIndex === 5
+                ? "sudoku-app__cell--row-divider"
+                : "",
+              columnIndex === 2 || columnIndex === 5
+                ? "sudoku-app__cell--col-divider"
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
 
-           return (
-             <button
-               key={`${rowIndex}-${columnIndex}`}
-               type="button"
-               className={cellClasses}
-               onClick={() => handleCellClick(rowIndex, columnIndex)}
-             >
-               {value ?? ""}
-             </button>
-           );
-         })
-       )}
-     </div>
-     <div className="sudoku-app__controls">
-       <div className="sudoku-app__numbers">
-         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((value) => (
-           <button key={value} type="button" onClick={() => handleNumberSelect(value)} className="pill-button">
-             {value}
-           </button>
-         ))}
-       </div>
-       <p className="sudoku-app__message">{message}</p>
-     </div>
-   </div>
+            return (
+              <button
+                key={`${rowIndex}-${columnIndex}`}
+                type="button"
+                className={cellClasses}
+                onClick={() => handleCellClick(rowIndex, columnIndex)}
+              >
+                {value ?? ""}
+              </button>
+            );
+          })
+        )}
+      </div>
+      <div className="sudoku-app__controls">
+        <div className="sudoku-app__numbers">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => handleNumberSelect(value)}
+              className="pill-button"
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+        <p className="sudoku-app__message">{message}</p>
+      </div>
+    </div>
   );
 }
 
 function SnakeApp() {
   const BOARD_SIZE = 20;
-  const initialSnake = [{ x: 10, y: 10 }, { x: 9, y: 10 }];
+  const initialSnake = [
+    { x: 10, y: 10 },
+    { x: 9, y: 10 },
+  ];
 
   const getRandomFood = useCallback((snake) => {
-   const available = [];
-   for (let y = 0; y < BOARD_SIZE; y += 1) {
-     for (let x = 0; x < BOARD_SIZE; x += 1) {
-       if (!snake.some((segment) => segment.x === x && segment.y === y)) {
-         available.push({ x, y });
-       }
-     }
-   }
-   return available[Math.floor(Math.random() * available.length)] || { x: 0, y: 0 };
+    const available = [];
+    for (let y = 0; y < BOARD_SIZE; y += 1) {
+      for (let x = 0; x < BOARD_SIZE; x += 1) {
+        if (!snake.some((segment) => segment.x === x && segment.y === y)) {
+          available.push({ x, y });
+        }
+      }
+    }
+    return (
+      available[Math.floor(Math.random() * available.length)] || { x: 0, y: 0 }
+    );
   }, []);
 
   const [snake, setSnake] = useState(initialSnake);
@@ -506,148 +568,193 @@ function SnakeApp() {
   const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
 
-  const restartGame = useCallback(() => {
-   const freshSnake = [{ x: 10, y: 10 }, { x: 9, y: 10 }];
-   setSnake(freshSnake);
-   setFood(getRandomFood(freshSnake));
-   setDirection({ x: 1, y: 0 });
-   setIsRunning(true);
-   setGameOver(false);
-   setScore(0);
-  }, [getRandomFood]);
+  const restartGame = useCallback(
+    (nextDirection = { x: 1, y: 0 }) => {
+      const freshSnake = [
+        { x: 10, y: 10 },
+        { x: 9, y: 10 },
+      ];
+      setSnake(freshSnake);
+      setFood(getRandomFood(freshSnake));
+      setDirection(nextDirection);
+      setIsRunning(true);
+      setGameOver(false);
+      setScore(0);
+    },
+    [getRandomFood]
+  );
+
+  const applyDirection = useCallback(
+    (nextDirection) => {
+      if (gameOver) {
+        restartGame(nextDirection);
+        return;
+      }
+
+      if (!isRunning) {
+        setDirection(nextDirection);
+        setIsRunning(true);
+        return;
+      }
+
+      setDirection((prevDirection) => {
+        if (
+          prevDirection.x + nextDirection.x === 0 &&
+          prevDirection.y + nextDirection.y === 0
+        ) {
+          return prevDirection;
+        }
+        return nextDirection;
+      });
+    },
+    [gameOver, isRunning, restartGame]
+  );
 
   useEffect(() => {
-   if (!isRunning || gameOver) {
-     return undefined;
-   }
+    if (!isRunning || gameOver) {
+      return undefined;
+    }
 
-   const interval = window.setInterval(() => {
-     setSnake((prevSnake) => {
-       const nextHead = {
-         x: prevSnake[0].x + direction.x,
-         y: prevSnake[0].y + direction.y,
-       };
+    const interval = window.setInterval(() => {
+      setSnake((prevSnake) => {
+        const nextHead = {
+          x: prevSnake[0].x + direction.x,
+          y: prevSnake[0].y + direction.y,
+        };
 
-       const hitWall =
-         nextHead.x < 0 || nextHead.y < 0 || nextHead.x >= BOARD_SIZE || nextHead.y >= BOARD_SIZE;
-       const hitSelf = prevSnake.some((segment) => segment.x === nextHead.x && segment.y === nextHead.y);
+        const hitWall =
+          nextHead.x < 0 ||
+          nextHead.y < 0 ||
+          nextHead.x >= BOARD_SIZE ||
+          nextHead.y >= BOARD_SIZE;
+        const hitSelf = prevSnake.some(
+          (segment) => segment.x === nextHead.x && segment.y === nextHead.y
+        );
 
-       if (hitWall || hitSelf) {
-         setGameOver(true);
-         setIsRunning(false);
-         return prevSnake;
-       }
+        if (hitWall || hitSelf) {
+          setGameOver(true);
+          setIsRunning(false);
+          return prevSnake;
+        }
 
-       const ateFood = nextHead.x === food.x && nextHead.y === food.y;
-       const nextSnake = ateFood ? [nextHead, ...prevSnake] : [nextHead, ...prevSnake.slice(0, -1)];
-       const nextFood = ateFood ? getRandomFood(nextSnake) : food;
+        const ateFood = nextHead.x === food.x && nextHead.y === food.y;
+        const nextSnake = ateFood
+          ? [nextHead, ...prevSnake]
+          : [nextHead, ...prevSnake.slice(0, -1)];
+        const nextFood = ateFood ? getRandomFood(nextSnake) : food;
 
-       if (ateFood) {
-         setScore((prevScore) => prevScore + 1);
-       }
-       setFood(nextFood);
-       return nextSnake;
-     });
-   }, 120);
+        if (ateFood) {
+          setScore((prevScore) => prevScore + 1);
+        }
+        setFood(nextFood);
+        return nextSnake;
+      });
+    }, 120);
 
-   return () => window.clearInterval(interval);
+    return () => window.clearInterval(interval);
   }, [BOARD_SIZE, direction, food, gameOver, getRandomFood, isRunning]);
 
   useEffect(() => {
-   const handleKeyDown = (event) => {
-     const map = {
-       ArrowUp: { x: 0, y: -1 },
-       ArrowDown: { x: 0, y: 1 },
-       ArrowLeft: { x: -1, y: 0 },
-       ArrowRight: { x: 1, y: 0 },
-     };
+    const handleKeyDown = (event) => {
+      const map = {
+        ArrowUp: { x: 0, y: -1 },
+        ArrowDown: { x: 0, y: 1 },
+        ArrowLeft: { x: -1, y: 0 },
+        ArrowRight: { x: 1, y: 0 },
+      };
 
-     const nextDirection = map[event.key];
-     if (!nextDirection) {
-       return;
-     }
+      const nextDirection = map[event.key];
+      if (!nextDirection) {
+        return;
+      }
 
-     event.preventDefault();
-     setDirection((prevDirection) => {
-       if (prevDirection.x + nextDirection.x === 0 && prevDirection.y + nextDirection.y === 0) {
-         return prevDirection;
-       }
-       return nextDirection;
-     });
-   };
+      event.preventDefault();
+      applyDirection(nextDirection);
+    };
 
-   window.addEventListener("keydown", handleKeyDown);
-   return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [applyDirection]);
 
   const handleDirectionTap = (nextDirection) => {
-   setDirection((prevDirection) => {
-     if (prevDirection.x + nextDirection.x === 0 && prevDirection.y + nextDirection.y === 0) {
-       return prevDirection;
-     }
-     return nextDirection;
-   });
+    applyDirection(nextDirection);
   };
 
   return (
-   <div className="snake-app">
-     <div className="snake-app__header">
-       <div>
-         <h3>Snake</h3>
-         <p>Use the arrows or tap the controls to snack your way around the board.</p>
-       </div>
-       <button type="button" onClick={restartGame} className="pill-button">
-         {isRunning ? "Restart" : "Start"}
-       </button>
-     </div>
-     <div className="snake-app__stats">
-       <span>Score: {score}</span>
-       <span>Status: {gameOver ? "Game over" : isRunning ? "Running" : "Paused"}</span>
-     </div>
-     <div className="snake-app__board" role="grid" aria-label="Snake board">
-       {Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, index) => {
-         const x = index % BOARD_SIZE;
-         const y = Math.floor(index / BOARD_SIZE);
-         const isHead = snake[0]?.x === x && snake[0]?.y === y;
-         const isBody = snake.some((segment) => segment.x === x && segment.y === y);
-         const isFood = food.x === x && food.y === y;
-         const cellClasses = [
-           "snake-app__cell",
-           isHead ? "snake-app__cell--head" : "",
-           isBody && !isHead ? "snake-app__cell--body" : "",
-           isFood ? "snake-app__cell--food" : "",
-         ]
-           .filter(Boolean)
-           .join(" ");
+    <div className="snake-app">
+      <div className="snake-app__header">
+        <div>
+          <h3>Snake</h3>
+        </div>
+      </div>
+      <div className="snake-app__stats">
+        <span>Score: {score}</span>
+        <span>
+          Status: {gameOver ? "Game over" : isRunning ? "Running" : "Paused"}
+        </span>
+      </div>
+      <div className="snake-app__board" role="grid" aria-label="Snake board">
+        {Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, index) => {
+          const x = index % BOARD_SIZE;
+          const y = Math.floor(index / BOARD_SIZE);
+          const isHead = snake[0]?.x === x && snake[0]?.y === y;
+          const isBody = snake.some(
+            (segment) => segment.x === x && segment.y === y
+          );
+          const isFood = food.x === x && food.y === y;
+          const cellClasses = [
+            "snake-app__cell",
+            isHead ? "snake-app__cell--head" : "",
+            isBody && !isHead ? "snake-app__cell--body" : "",
+            isFood ? "snake-app__cell--food" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
 
-         return <div key={`${x}-${y}`} className={cellClasses} />;
-       })}
-       {!isRunning && !gameOver && (
-         <div className="snake-app__overlay">
-           <p>Tap start and steer with the arrow keys.</p>
-         </div>
-       )}
-       {gameOver && (
-         <div className="snake-app__overlay">
-           <p>Game over. Start a new round.</p>
-         </div>
-       )}
-     </div>
-     <div className="snake-app__controls">
-       <button type="button" onClick={() => handleDirectionTap({ x: 0, y: -1 })} className="pill-button">
-         ↑
-       </button>
-       <button type="button" onClick={() => handleDirectionTap({ x: 0, y: 1 })} className="pill-button">
-         ↓
-       </button>
-       <button type="button" onClick={() => handleDirectionTap({ x: -1, y: 0 })} className="pill-button">
-         ←
-       </button>
-       <button type="button" onClick={() => handleDirectionTap({ x: 1, y: 0 })} className="pill-button">
-         →
-       </button>
-     </div>
-   </div>
+          return <div key={`${x}-${y}`} className={cellClasses} />;
+        })}
+        {!isRunning && !gameOver && (
+          <div className="snake-app__overlay">
+            <p>Press any arrow key to start.</p>
+          </div>
+        )}
+        {gameOver && (
+          <div className="snake-app__overlay">
+            <p>Game over. Press any arrow key to restart.</p>
+          </div>
+        )}
+      </div>
+      <div className="snake-app__controls">
+        <button
+          type="button"
+          onClick={() => handleDirectionTap({ x: 0, y: -1 })}
+          className="pill-button"
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          onClick={() => handleDirectionTap({ x: 0, y: 1 })}
+          className="pill-button"
+        >
+          ↓
+        </button>
+        <button
+          type="button"
+          onClick={() => handleDirectionTap({ x: -1, y: 0 })}
+          className="pill-button"
+        >
+          ←
+        </button>
+        <button
+          type="button"
+          onClick={() => handleDirectionTap({ x: 1, y: 0 })}
+          className="pill-button"
+        >
+          →
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -844,6 +951,8 @@ export default function Desktop() {
         setSelectedIcon(null);
       }}
     >
+      <WeatherWidget />
+
       {/* Desktop Icons */}
       <div className="desktop-icons">
         {DESKTOP_ICONS.map((icon) => (
