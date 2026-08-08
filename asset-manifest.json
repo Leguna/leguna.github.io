@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "./static/css/main.10b8d2bb.css",
-    "main.js": "./static/js/main.b5fdcd0c.js",
+    "main.css": "./static/css/main.98709773.css",
+    "main.js": "./static/js/main.f2dbebe3.js",
     "static/media/portfolio.gif": "./static/media/portfolio.ed6c89f1485f23014ebd.gif",
     "static/media/iot.png": "./static/media/iot.6956279dc28e200fcd95.png",
     "static/media/monitor.jpg": "./static/media/monitor.b528224ac0af9f836279.jpg",
@@ -74,11 +74,11 @@
     "static/media/talksCardBackAlt.svg": "./static/media/talksCardBackAlt.018d87225926eee9ccc3.svg",
     "static/media/site.webmanifest": "./static/media/site.32c297279c0c16947403.webmanifest",
     "static/media/talksCardBack.svg": "./static/media/talksCardBack.7dc8695e60efbc2baab8.svg",
-    "main.10b8d2bb.css.map": "./static/css/main.10b8d2bb.css.map",
-    "main.b5fdcd0c.js.map": "./static/js/main.b5fdcd0c.js.map"
+    "main.98709773.css.map": "./static/css/main.98709773.css.map",
+    "main.f2dbebe3.js.map": "./static/js/main.f2dbebe3.js.map"
   },
   "entrypoints": [
-    "static/css/main.10b8d2bb.css",
-    "static/js/main.b5fdcd0c.js"
+    "static/css/main.98709773.css",
+    "static/js/main.f2dbebe3.js"
   ]
 }
